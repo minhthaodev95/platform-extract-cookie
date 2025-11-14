@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Sidebar from './components/Sidebar';
 import MainArea from './components/MainArea';
 import RecentSessions from './components/RecentSessions';
@@ -13,10 +13,20 @@ function App() {
   const [browserStatus, setBrowserStatus] = useState(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [sessionToExport, setSessionToExport] = useState(null);
+  const statusTimeoutRef = useRef(null);
 
   // Load sessions on mount
   useEffect(() => {
     loadSessions();
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadSessions = async () => {
@@ -70,9 +80,15 @@ function App() {
         message: 'Cookies extracted successfully!'
       });
 
+      // Clear existing timeout if any
+      if (statusTimeoutRef.current) {
+        clearTimeout(statusTimeoutRef.current);
+      }
+
       // Reset after 2 seconds
-      setTimeout(() => {
+      statusTimeoutRef.current = setTimeout(() => {
         setBrowserStatus(null);
+        statusTimeoutRef.current = null;
       }, 2000);
     } catch (error) {
       console.error('Failed to save session:', error);

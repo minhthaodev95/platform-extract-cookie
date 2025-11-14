@@ -11,6 +11,7 @@ function MainArea({
   const [useProxy, setUseProxy] = useState(false);
   const [proxyUrl, setProxyUrl] = useState('');
   const [headless, setHeadless] = useState(false);
+  const [isExtracting, setIsExtracting] = useState(false);
 
   const handleOpenBrowser = () => {
     if (!selectedPlatform) return;
@@ -192,10 +193,13 @@ function MainArea({
               <li>Come back here and click "Extract Cookies"</li>
             </ol>
             <button
-              onClick={() => {
-                // Trigger extraction via IPC
-                const { ipcRenderer } = window.require('electron');
-                ipcRenderer.invoke('extract-cookies').then((result) => {
+              onClick={async () => {
+                setIsExtracting(true);
+                try {
+                  // Trigger extraction via IPC
+                  const { ipcRenderer } = window.require('electron');
+                  const result = await ipcRenderer.invoke('extract-cookies');
+
                   if (result.success) {
                     onExtractComplete({
                       platform: selectedPlatform.id,
@@ -203,13 +207,33 @@ function MainArea({
                       accountName: accountName || 'Unnamed Account',
                       data: result.data,
                     });
+                  } else {
+                    // Handle extraction failure
+                    alert('Failed to extract cookies: ' + (result.error || 'Unknown error'));
                   }
-                });
+                } catch (error) {
+                  console.error('Extract cookies error:', error);
+                  alert('Error extracting cookies: ' + error.message);
+                } finally {
+                  setIsExtracting(false);
+                }
               }}
-              className="btn btn-success w-full flex items-center justify-center gap-2"
+              disabled={isExtracting}
+              className={`btn btn-success w-full flex items-center justify-center gap-2 ${
+                isExtracting ? 'opacity-50 cursor-not-allowed' : ''
+              }`}
             >
-              <span>✅</span>
-              <span>I'm Logged In - Extract Cookies Now</span>
+              {isExtracting ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                  <span>Extracting Cookies...</span>
+                </>
+              ) : (
+                <>
+                  <span>✅</span>
+                  <span>I'm Logged In - Extract Cookies Now</span>
+                </>
+              )}
             </button>
           </div>
         )}
