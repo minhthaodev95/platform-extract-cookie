@@ -30,7 +30,7 @@ function createWindow() {
   // Load the app
   if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
     // Try multiple ports for Vite dev server (dynamic port support)
-    const ports = [5173, 8181, 5174, 3000];
+    const ports = [5173, 5174, 5175, 5176, 5177, 8181, 8182, 3000];
     const loadDevServer = async () => {
       for (const port of ports) {
         try {
@@ -44,6 +44,12 @@ function createWindow() {
         }
       }
       console.error('❌ Could not connect to Vite dev server on any port');
+      // Show error dialog to user
+      const { dialog } = require('electron');
+      dialog.showErrorBox(
+        'Dev Server Not Found',
+        'Could not connect to Vite dev server. Make sure it is running.'
+      );
     };
     loadDevServer();
   } else {
