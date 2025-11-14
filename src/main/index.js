@@ -19,9 +19,10 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 600,
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
-      enableRemoteModule: true,
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: true,
+      preload: path.join(__dirname, 'preload.js'),
     },
     titleBarStyle: 'default',
     title: 'Platform Cookie Extractor',
@@ -30,7 +31,7 @@ function createWindow() {
   // Load the app
   if (process.env.NODE_ENV === 'development' || !app.isPackaged) {
     // Try multiple ports for Vite dev server (dynamic port support)
-    const ports = [5173, 5174, 5175, 5176, 5177, 8181, 8182, 3000];
+    const ports = [5180, 5181, 5182, 5183, 5184];
     const loadDevServer = async () => {
       for (const port of ports) {
         try {
@@ -226,38 +227,83 @@ ipcMain.handle('open-browser', async (event, { platform, options }) => {
 
 // Extract cookies from open browser
 ipcMain.handle('extract-cookies', async () => {
+  console.log('========================================');
+  console.log('Extract cookies IPC handler called');
+  console.log('========================================');
+
+  try {
+    if (!browserManager) {
+      console.error('❌ No browser instance running');
+      return { success: false, error: 'No browser instance running. Please open the browser first.' };
+    }
+
+    console.log('✓ Browser manager exists');
+
+    // Check if logged in
+    console.log('Checking if user is logged in...');
+    const isLoggedIn = await browserManager.isLoggedIn();
+    console.log(`Login check result: ${isLoggedIn}`);
+
+    if (!isLoggedIn) {
+      console.error('❌ User not logged in or no cookies found');
+      return {
+        success: false,
+        error: 'No cookies found. Please make sure you are fully logged in to the platform.',
+      };
+    }
+
+    console.log('✓ User is logged in, extracting data...');
+
+    // Extract data
+    const result = await browserManager.extractData();
+
+    if (!result.success) {
+      console.error('❌ Data extraction failed:', result.error);
+      return result;
+    }
+
+    console.log('✓ Data extraction successful');
+    console.log(`Extracted ${result.data.cookies.length} cookies`);
+
+    // Close browser after extraction
+    console.log('Closing browser...');
+    await browserManager.close();
+    browserManager = null;
+    console.log('✓ Browser closed');
+
+    console.log('========================================');
+    console.log('Extraction completed successfully!');
+    console.log('========================================');
+
+    return {
+      success: true,
+      data: result.data,
+      message: `Extracted ${result.data.cookies.length} cookies successfully!`,
+    };
+  } catch (error) {
+    console.error('========================================');
+    console.error('❌ Extract cookies error:', error);
+    console.error('========================================');
+    return { success: false, error: error.message };
+  }
+});
+
+// Close browser manually without extracting
+ipcMain.handle('close-browser', async () => {
+  console.log('Close browser IPC handler called');
   try {
     if (!browserManager) {
       return { success: false, error: 'No browser instance running' };
     }
 
-    // Check if logged in
-    const isLoggedIn = await browserManager.isLoggedIn();
-    if (!isLoggedIn) {
-      return {
-        success: false,
-        error: 'No cookies found. Please make sure you are logged in.',
-      };
-    }
-
-    // Extract data
-    const result = await browserManager.extractData();
-
-    // Close browser after extraction
+    console.log('Closing browser...');
     await browserManager.close();
     browserManager = null;
+    console.log('✓ Browser closed successfully');
 
-    if (result.success) {
-      return {
-        success: true,
-        data: result.data,
-        message: `Extracted ${result.data.cookies.length} cookies successfully!`,
-      };
-    }
-
-    return result;
+    return { success: true, message: 'Browser closed successfully' };
   } catch (error) {
-    console.error('Extract cookies error:', error);
+    console.error('❌ Error closing browser:', error);
     return { success: false, error: error.message };
   }
 });

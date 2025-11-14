@@ -1,5 +1,46 @@
 import React, { useState } from 'react';
 
+// Utility function to validate proxy URL
+function validateProxyUrl(url) {
+  if (!url) return { valid: false, error: 'Proxy URL is required when proxy is enabled' };
+
+  // Check if URL starts with valid proxy protocols
+  const validProtocols = ['http://', 'https://', 'socks4://', 'socks5://'];
+  const hasValidProtocol = validProtocols.some(protocol => url.toLowerCase().startsWith(protocol));
+
+  if (!hasValidProtocol) {
+    return {
+      valid: false,
+      error: 'Proxy URL must start with http://, https://, socks4://, or socks5://'
+    };
+  }
+
+  // Basic URL format check
+  try {
+    new URL(url);
+    return { valid: true };
+  } catch (e) {
+    return { valid: false, error: 'Invalid proxy URL format' };
+  }
+}
+
+// Utility function to validate account name
+function validateAccountName(name) {
+  if (!name) return { valid: true }; // Optional field
+
+  if (name.length > 50) {
+    return { valid: false, error: 'Account name must be 50 characters or less' };
+  }
+
+  // Check for potentially dangerous characters
+  const dangerousChars = /[<>\"'`]/;
+  if (dangerousChars.test(name)) {
+    return { valid: false, error: 'Account name contains invalid characters' };
+  }
+
+  return { valid: true };
+}
+
 function MainArea({
   selectedPlatform,
   onOpenBrowser,
@@ -12,9 +53,29 @@ function MainArea({
   const [proxyUrl, setProxyUrl] = useState('');
   const [headless, setHeadless] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
+  const [validationError, setValidationError] = useState(null);
+  const [extractionError, setExtractionError] = useState(null);
 
   const handleOpenBrowser = () => {
     if (!selectedPlatform) return;
+
+    // Validate inputs
+    const accountValidation = validateAccountName(accountName);
+    if (!accountValidation.valid) {
+      setValidationError(accountValidation.error);
+      return;
+    }
+
+    if (useProxy) {
+      const proxyValidation = validateProxyUrl(proxyUrl);
+      if (!proxyValidation.valid) {
+        setValidationError(proxyValidation.error);
+        return;
+      }
+    }
+
+    // Clear any previous validation errors
+    setValidationError(null);
 
     const options = {
       accountName: accountName || 'Unnamed Account',
@@ -65,6 +126,16 @@ function MainArea({
               <p className="text-sm text-gray-500">{selectedPlatform.url}</p>
             </div>
           </div>
+
+          {/* Validation Error */}
+          {validationError && (
+            <div className="p-4 rounded-lg mb-4 bg-red-50 border border-red-200">
+              <div className="flex items-center gap-2">
+                <span className="text-red-600">❌</span>
+                <span className="font-medium text-red-800">{validationError}</span>
+              </div>
+            </div>
+          )}
 
           {/* Status Indicator */}
           {browserStatus && (
@@ -179,26 +250,45 @@ function MainArea({
         {/* Instructions */}
         {browserStatus?.status === 'opened' && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h3 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
-              <span>⏳</span>
-              Waiting for Login
-            </h3>
-            <p className="text-sm text-yellow-800 mb-3">
-              A browser window has been opened. Please complete the following steps:
+            {/* Extraction Error */}
+            {extractionError && (
+              <div className="p-3 rounded-lg mb-4 bg-red-50 border border-red-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-red-600">❌</span>
+                  <span className="font-medium text-red-800">Failed to extract cookies: {extractionError}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="flex items-start gap-3 mb-3">
+              <div className="flex-shrink-0 w-10 h-10 bg-yellow-200 rounded-full flex items-center justify-center">
+                <span className="text-xl">⏳</span>
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-yellow-900 mb-1">
+                  Browser is Open - Waiting for Login
+                </h3>
+                <p className="text-xs text-yellow-700">
+                  The browser window will remain open until you extract cookies or manually close it.
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-yellow-800 mb-2 font-medium">
+              Complete these steps in the browser window:
             </p>
-            <ol className="list-decimal list-inside space-y-1 text-sm text-yellow-800 mb-4">
-              <li>Enter your username and password in the browser</li>
+            <ol className="list-decimal list-inside space-y-1 text-sm text-yellow-800 mb-4 pl-2">
+              <li>Enter your username and password</li>
               <li>Complete any 2FA/verification if required</li>
-              <li>Make sure you're fully logged in</li>
-              <li>Come back here and click "Extract Cookies"</li>
+              <li>Make sure you're fully logged in to {selectedPlatform.name}</li>
+              <li>Return here and click the button below</li>
             </ol>
             <button
               onClick={async () => {
                 setIsExtracting(true);
+                setExtractionError(null); // Clear previous errors
                 try {
                   // Trigger extraction via IPC
-                  const { ipcRenderer } = window.require('electron');
-                  const result = await ipcRenderer.invoke('extract-cookies');
+                  const result = await window.electronAPI.extractCookies();
 
                   if (result.success) {
                     onExtractComplete({
@@ -209,11 +299,11 @@ function MainArea({
                     });
                   } else {
                     // Handle extraction failure
-                    alert('Failed to extract cookies: ' + (result.error || 'Unknown error'));
+                    setExtractionError(result.error || 'Unknown error');
                   }
                 } catch (error) {
                   console.error('Extract cookies error:', error);
-                  alert('Error extracting cookies: ' + error.message);
+                  setExtractionError(error.message || 'Failed to extract cookies');
                 } finally {
                   setIsExtracting(false);
                 }
@@ -234,6 +324,26 @@ function MainArea({
                   <span>I'm Logged In - Extract Cookies Now</span>
                 </>
               )}
+            </button>
+
+            {/* Close Browser Button */}
+            <button
+              onClick={async () => {
+                try {
+                  const result = await window.electronAPI.closeBrowser();
+                  if (result.success) {
+                    // Reset browser status
+                    onExtractComplete(null); // This will trigger a refresh or you can add a separate callback
+                    window.location.reload(); // Reload to reset the UI state
+                  }
+                } catch (error) {
+                  console.error('Error closing browser:', error);
+                }
+              }}
+              className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-red-300 text-red-700 hover:bg-red-50 transition-colors"
+            >
+              <span>❌</span>
+              <span className="text-sm font-medium">Close Browser Without Extracting</span>
             </button>
           </div>
         )}

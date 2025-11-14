@@ -185,6 +185,315 @@ const PLATFORMS = {
       ];
     },
   },
+
+  youtube: {
+    id: 'youtube',
+    name: 'YouTube',
+    url: 'https://www.youtube.com',
+    loginUrl: 'https://accounts.google.com/signin',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasYouTubeCookie = cookies.some(
+          (cookie) => cookie.name === 'SSID' || cookie.name === 'APISID' || cookie.name === 'SID'
+        );
+
+        if (hasYouTubeCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('#avatar-btn').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Sign in with your Google account',
+        'Enter your email and password',
+        'Complete any 2-step verification',
+        'Wait for YouTube home page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  reddit: {
+    id: 'reddit',
+    name: 'Reddit',
+    url: 'https://www.reddit.com',
+    loginUrl: 'https://www.reddit.com/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasRedditCookie = cookies.some(
+          (cookie) => cookie.name === 'reddit_session' || cookie.name === 'token_v2'
+        );
+
+        if (hasRedditCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('#USER_DROPDOWN_ID').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your username and password',
+        'Complete any verification steps',
+        'Wait for Reddit home page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  pinterest: {
+    id: 'pinterest',
+    name: 'Pinterest',
+    url: 'https://www.pinterest.com',
+    loginUrl: 'https://www.pinterest.com/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasPinterestCookie = cookies.some(
+          (cookie) => cookie.name === '_auth' || cookie.name === '_pinterest_sess'
+        );
+
+        if (hasPinterestCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('[data-test-id="header-profile"]').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your email and password',
+        'Complete any verification if required',
+        'Wait for Pinterest home feed to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  discord: {
+    id: 'discord',
+    name: 'Discord',
+    url: 'https://discord.com/app',
+    loginUrl: 'https://discord.com/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasDiscordCookie = cookies.some(
+          (cookie) => cookie.name === '__dcfduid' || cookie.name === '__sdcfduid'
+        );
+
+        if (hasDiscordCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('[class*="sidebar"]').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your email and password',
+        'Complete any 2FA verification',
+        'Wait for Discord app to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  twitch: {
+    id: 'twitch',
+    name: 'Twitch',
+    url: 'https://www.twitch.tv',
+    loginUrl: 'https://www.twitch.tv/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasTwitchCookie = cookies.some(
+          (cookie) => cookie.name === 'auth-token' || cookie.name === 'persistent'
+        );
+
+        if (hasTwitchCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('[data-a-target="user-menu-toggle"]').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your username and password',
+        'Complete any 2FA verification',
+        'Wait for Twitch home page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  github: {
+    id: 'github',
+    name: 'GitHub',
+    url: 'https://github.com',
+    loginUrl: 'https://github.com/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasGitHubCookie = cookies.some(
+          (cookie) => cookie.name === 'user_session' || cookie.name === 'logged_in'
+        );
+
+        if (hasGitHubCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('[data-target="react-app.embeddedData"]').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your username/email and password',
+        'Complete any 2FA verification',
+        'Wait for GitHub dashboard to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  amazon: {
+    id: 'amazon',
+    name: 'Amazon',
+    url: 'https://www.amazon.com',
+    loginUrl: 'https://www.amazon.com/ap/signin',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasAmazonCookie = cookies.some(
+          (cookie) => cookie.name === 'session-id' || cookie.name === 'ubid-main'
+        );
+
+        if (hasAmazonCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('#nav-link-accountList').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your email or phone number',
+        'Enter your password',
+        'Complete any verification steps',
+        'Wait for Amazon home page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  netflix: {
+    id: 'netflix',
+    name: 'Netflix',
+    url: 'https://www.netflix.com',
+    loginUrl: 'https://www.netflix.com/login',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasNetflixCookie = cookies.some(
+          (cookie) => cookie.name === 'NetflixId' || cookie.name === 'SecureNetflixId'
+        );
+
+        if (hasNetflixCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('.profile-gate-container, .browse-container').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your email and password',
+        'Select a profile if prompted',
+        'Wait for Netflix browse page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
+
+  google: {
+    id: 'google',
+    name: 'Google',
+    url: 'https://www.google.com',
+    loginUrl: 'https://accounts.google.com/signin',
+
+    async isLoggedIn(page) {
+      try {
+        const cookies = await page.context().cookies();
+        const hasGoogleCookie = cookies.some(
+          (cookie) => cookie.name === 'SID' || cookie.name === 'SSID' || cookie.name === 'APISID'
+        );
+
+        if (hasGoogleCookie) {
+          return true;
+        }
+
+        const loggedInElement = await page.$('a[aria-label*="Google Account"]').catch(() => null);
+        return loggedInElement !== null;
+      } catch (error) {
+        return false;
+      }
+    },
+
+    getInstructions() {
+      return [
+        'Enter your Google email',
+        'Enter your password',
+        'Complete any 2-step verification',
+        'Wait for Google home page to load',
+        'Return here and click "Extract Cookies"',
+      ];
+    },
+  },
 };
 
 /**

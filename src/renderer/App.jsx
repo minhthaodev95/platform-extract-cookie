@@ -4,8 +4,6 @@ import MainArea from './components/MainArea';
 import RecentSessions from './components/RecentSessions';
 import ExportDialog from './components/ExportDialog';
 
-const { ipcRenderer } = window.require('electron');
-
 function App() {
   const [selectedPlatform, setSelectedPlatform] = useState(null);
   const [sessions, setSessions] = useState([]);
@@ -13,25 +11,30 @@ function App() {
   const [browserStatus, setBrowserStatus] = useState(null);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [sessionToExport, setSessionToExport] = useState(null);
+  const [exportError, setExportError] = useState(null);
   const statusTimeoutRef = useRef(null);
+  const errorTimeoutRef = useRef(null);
 
   // Load sessions on mount
   useEffect(() => {
     loadSessions();
   }, []);
 
-  // Cleanup timeout on unmount
+  // Cleanup timeouts on unmount
   useEffect(() => {
     return () => {
       if (statusTimeoutRef.current) {
         clearTimeout(statusTimeoutRef.current);
+      }
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
       }
     };
   }, []);
 
   const loadSessions = async () => {
     try {
-      const data = await ipcRenderer.invoke('get-sessions');
+      const data = await window.electronAPI.getSessions();
       setSessions(data);
     } catch (error) {
       console.error('Failed to load sessions:', error);
@@ -43,7 +46,7 @@ function App() {
     setBrowserStatus({ status: 'opening', message: 'Opening browser...' });
 
     try {
-      const result = await ipcRenderer.invoke('open-browser', {
+      const result = await window.electronAPI.openBrowser({
         platform: platform.id,
         options,
       });
@@ -73,7 +76,7 @@ function App() {
 
   const handleExtractComplete = async (sessionData) => {
     try {
-      const newSession = await ipcRenderer.invoke('save-session', sessionData);
+      const newSession = await window.electronAPI.saveSession(sessionData);
       await loadSessions();
       setBrowserStatus({
         status: 'success',
@@ -101,7 +104,7 @@ function App() {
 
   const handleDeleteSession = async (sessionId) => {
     try {
-      await ipcRenderer.invoke('delete-session', sessionId);
+      await window.electronAPI.deleteSession(sessionId);
       await loadSessions();
     } catch (error) {
       console.error('Failed to delete session:', error);
@@ -115,7 +118,7 @@ function App() {
 
   const handleExportConfirm = async (format, exportPath) => {
     try {
-      const result = await ipcRenderer.invoke('export-session', {
+      const result = await window.electronAPI.exportSession({
         sessionId: sessionToExport.id,
         format,
         exportPath,
@@ -125,13 +128,34 @@ function App() {
         console.log('Exported to:', result.path);
         setExportDialogOpen(false);
         setSessionToExport(null);
+        setExportError(null);
       } else if (!result.canceled) {
         console.error('Export failed:', result.error);
-        alert('Export failed: ' + result.error);
+        const errorMessage = result.error || 'Unknown error';
+        setExportError(`Export failed: ${errorMessage}`);
+
+        // Clear error after 5 seconds
+        if (errorTimeoutRef.current) {
+          clearTimeout(errorTimeoutRef.current);
+        }
+        errorTimeoutRef.current = setTimeout(() => {
+          setExportError(null);
+          errorTimeoutRef.current = null;
+        }, 5000);
       }
     } catch (error) {
       console.error('Export error:', error);
-      alert('Export error: ' + error.message);
+      const errorMessage = error.message || 'Unknown error';
+      setExportError(`Export error: ${errorMessage}`);
+
+      // Clear error after 5 seconds
+      if (errorTimeoutRef.current) {
+        clearTimeout(errorTimeoutRef.current);
+      }
+      errorTimeoutRef.current = setTimeout(() => {
+        setExportError(null);
+        errorTimeoutRef.current = null;
+      }, 5000);
     }
   };
 
@@ -147,6 +171,27 @@ function App() {
           macOS • v1.0.0
         </div>
       </div>
+
+      {/* Export Error Notification */}
+      {exportError && (
+        <div className="fixed top-20 right-6 z-50 max-w-md animate-fade-in">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 shadow-lg">
+            <div className="flex items-start gap-3">
+              <span className="text-red-600 text-xl">❌</span>
+              <div className="flex-1">
+                <h3 className="font-semibold text-red-900 mb-1">Export Error</h3>
+                <p className="text-sm text-red-800">{exportError}</p>
+              </div>
+              <button
+                onClick={() => setExportError(null)}
+                className="text-red-400 hover:text-red-600 transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">

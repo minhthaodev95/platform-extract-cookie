@@ -98,14 +98,25 @@ class BrowserManager {
    * Extract cookies and storage data from the current page
    */
   async extractData() {
+    console.log('Starting data extraction...');
+
     if (!this.page || !this.context) {
+      console.error('Browser not initialized');
       throw new Error('Browser not initialized');
     }
 
     try {
+      // Check if page is still valid
+      if (this.page.isClosed()) {
+        throw new Error('Browser page was closed');
+      }
+
+      console.log('Extracting cookies...');
       // Get cookies
       const cookies = await this.context.cookies();
+      console.log(`Extracted ${cookies.length} cookies`);
 
+      console.log('Extracting localStorage...');
       // Get localStorage
       const localStorage = await this.page.evaluate(() => {
         const data = {};
@@ -115,7 +126,9 @@ class BrowserManager {
         }
         return data;
       });
+      console.log(`Extracted ${Object.keys(localStorage).length} localStorage items`);
 
+      console.log('Extracting sessionStorage...');
       // Get sessionStorage
       const sessionStorage = await this.page.evaluate(() => {
         const data = {};
@@ -125,13 +138,16 @@ class BrowserManager {
         }
         return data;
       });
+      console.log(`Extracted ${Object.keys(sessionStorage).length} sessionStorage items`);
 
       // Get current URL
       const currentUrl = this.page.url();
+      console.log(`Current URL: ${currentUrl}`);
 
       // Get user agent
       const userAgent = await this.page.evaluate(() => navigator.userAgent);
 
+      console.log('Data extraction completed successfully');
       return {
         success: true,
         data: {
@@ -183,15 +199,37 @@ class BrowserManager {
    * Check if user is logged in (platform-specific check can be added)
    */
   async isLoggedIn() {
-    if (!this.page) {
+    if (!this.page || !this.context || !this.browser) {
+      console.log('Browser not initialized');
       return false;
     }
 
     try {
-      // Simple check: if we have cookies, assume logged in
+      // Check if browser is still connected
+      if (!this.browser.isConnected()) {
+        console.log('Browser not connected');
+        return false;
+      }
+
+      // Check if page is still valid
+      if (this.page.isClosed()) {
+        console.log('Page is closed');
+        return false;
+      }
+
+      // Get cookies
       const cookies = await this.context.cookies();
-      return cookies.length > 0;
+      console.log(`Found ${cookies.length} cookies`);
+
+      // Check for meaningful cookies (not just empty cookies)
+      const hasMeaningfulCookies = cookies.some(cookie =>
+        cookie.value && cookie.value.length > 0
+      );
+
+      console.log(`Has meaningful cookies: ${hasMeaningfulCookies}`);
+      return hasMeaningfulCookies;
     } catch (error) {
+      console.error('Error checking login status:', error);
       return false;
     }
   }
