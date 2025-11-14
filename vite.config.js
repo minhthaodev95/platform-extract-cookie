@@ -11,6 +11,7 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    strictPort: false, // Allow dynamic port if 5173 is taken
   },
   resolve: {
     alias: {
